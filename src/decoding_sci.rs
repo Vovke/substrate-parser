@@ -13,12 +13,13 @@ use scale_info::{
     TypeDefPrimitive, Variant,
 };
 use sp_arithmetic::{PerU16, Perbill, Percent, Permill, Perquintill};
-use substrate_crypto_light::{
-    common::AccountId32,
-    ecdsa::{Public as PublicEcdsa, Signature as SignatureEcdsa},
-    ed25519::{Public as PublicEd25519, Signature as SignatureEd25519},
-    sr25519::{Public as PublicSr25519, Signature as SignatureSr25519},
-};
+use substrate_crypto_light::common::AccountId32;
+#[cfg(feature = "ecdsa")]
+use substrate_crypto_light::ecdsa::{Public as PublicEcdsa, Signature as SignatureEcdsa};
+#[cfg(feature = "ed25519")]
+use substrate_crypto_light::ed25519::{Public as PublicEd25519, Signature as SignatureEd25519};
+#[cfg(feature = "sr25519")]
+use substrate_crypto_light::sr25519::{Public as PublicSr25519, Signature as SignatureSr25519};
 
 use crate::std::{borrow::ToOwned, string::String, vec::Vec};
 
@@ -515,6 +516,7 @@ where
             )?,
             info: propagated.info,
         }),
+        #[cfg(feature = "ed25519")]
         SpecialtyTypeChecked::PublicEd25519 => Ok(ExtendedData {
             data: PublicEd25519::parse_check_compact::<B, E>(
                 data,
@@ -524,6 +526,7 @@ where
             )?,
             info: propagated.info,
         }),
+        #[cfg(feature = "sr25519")]
         SpecialtyTypeChecked::PublicSr25519 => Ok(ExtendedData {
             data: PublicSr25519::parse_check_compact::<B, E>(
                 data,
@@ -533,6 +536,7 @@ where
             )?,
             info: propagated.info,
         }),
+        #[cfg(feature = "ecdsa")]
         SpecialtyTypeChecked::PublicEcdsa => Ok(ExtendedData {
             data: PublicEcdsa::parse_check_compact::<B, E>(
                 data,
@@ -542,6 +546,7 @@ where
             )?,
             info: propagated.info,
         }),
+        #[cfg(feature = "ed25519")]
         SpecialtyTypeChecked::SignatureEd25519 => Ok(ExtendedData {
             data: SignatureEd25519::parse_check_compact::<B, E>(
                 data,
@@ -551,6 +556,7 @@ where
             )?,
             info: propagated.info,
         }),
+        #[cfg(feature = "sr25519")]
         SpecialtyTypeChecked::SignatureSr25519 => Ok(ExtendedData {
             data: SignatureSr25519::parse_check_compact::<B, E>(
                 data,
@@ -560,6 +566,7 @@ where
             )?,
             info: propagated.info,
         }),
+        #[cfg(feature = "ecdsa")]
         SpecialtyTypeChecked::SignatureEcdsa => Ok(ExtendedData {
             data: SignatureEcdsa::parse_check_compact::<B, E>(
                 data,

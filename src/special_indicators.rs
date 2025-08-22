@@ -259,10 +259,19 @@ pub enum SpecialtyH256 {
 #[derive(Clone, Copy, Debug)]
 pub enum SignatureIndicator {
     None,
+    #[cfg(feature = "ecdsa")]
     Ecdsa,
+    #[cfg(feature = "ed25519")]
     Ed25519,
+    #[cfg(feature = "sr25519")]
     Sr25519,
 }
+#[cfg(feature = "ecdsa")]
+use substrate_crypto_light::ecdsa::SIGNATURE_LEN as SIGNATURE_LEN_ECDSA;
+#[cfg(feature = "ed25519")]
+use substrate_crypto_light::ed25519::SIGNATURE_LEN as SIGNATURE_LEN_ED25519;
+#[cfg(feature = "sr25519")]
+use substrate_crypto_light::sr25519::SIGNATURE_LEN as SIGNATURE_LEN_SR25519;
 
 impl SignatureIndicator {
     /// `SignatureIndicator` for a [`Field`]. Uses `type_name`, checks signature
@@ -297,23 +306,26 @@ impl SignatureIndicator {
             };
             match &field.type_name {
                 Some(type_name) => match type_name.as_str() {
+                    #[cfg(feature = "ecdsa")]
                     a if SIGNATURE_ECDSA_ID_SET.contains(&a) => {
-                        if array_u8_length == substrate_crypto_light::ecdsa::SIGNATURE_LEN as u32 {
+                        if array_u8_length == SIGNATURE_LEN_ECDSA as u32 {
                             Self::Ecdsa
                         } else {
                             Self::None
                         }
                     }
+                    #[cfg(feature = "ed25519")]
                     a if SIGNATURE_ED25519_ID_SET.contains(&a) => {
-                        if array_u8_length == substrate_crypto_light::ed25519::SIGNATURE_LEN as u32
+                        if array_u8_length == SIGNATURE_LEN_ED25519 as u32
                         {
                             Self::Ed25519
                         } else {
                             Self::None
                         }
                     }
+                    #[cfg(feature = "sr25519")]
                     a if SIGNATURE_SR25519_ID_SET.contains(&a) => {
-                        if array_u8_length == substrate_crypto_light::sr25519::SIGNATURE_LEN as u32
+                        if array_u8_length == SIGNATURE_LEN_SR25519 as u32
                         {
                             Self::Sr25519
                         } else {
@@ -466,11 +478,17 @@ pub enum SpecialtyTypeHinted {
     Permill,
     Perquintill,
     PerU16,
+    #[cfg(feature = "ed25519")]
     PublicEd25519,
+    #[cfg(feature = "sr25519")]
     PublicSr25519,
+    #[cfg(feature = "ecdsa")]
     PublicEcdsa,
+    #[cfg(feature = "ed25519")]
     SignatureEd25519,
+    #[cfg(feature = "sr25519")]
     SignatureSr25519,
+    #[cfg(feature = "ecdsa")]
     SignatureEcdsa,
     UncheckedExtrinsic,
 }
@@ -513,8 +531,11 @@ impl SpecialtyTypeHinted {
                     .collect::<Vec<&str>>()
                     .as_ref()
                 {
+                    #[cfg(feature = "ed25519")]
                     SP_CORE_ED25519 => Self::PublicEd25519,
+                    #[cfg(feature = "sr25519")]
                     SP_CORE_SR25519 => Self::PublicSr25519,
+                    #[cfg(feature = "ecdsa")]
                     SP_CORE_ECDSA => Self::PublicEcdsa,
                     _ => Self::None,
                 },
@@ -526,8 +547,11 @@ impl SpecialtyTypeHinted {
                     .collect::<Vec<&str>>()
                     .as_ref()
                 {
+                    #[cfg(feature = "ed25519")]
                     SP_CORE_ED25519 => Self::SignatureEd25519,
+                    #[cfg(feature = "sr25519")]
                     SP_CORE_SR25519 => Self::SignatureSr25519,
+                    #[cfg(feature = "ecdsa")]
                     SP_CORE_ECDSA => Self::SignatureEcdsa,
                     _ => Self::None,
                 },
@@ -573,11 +597,17 @@ pub enum SpecialtyTypeChecked {
     Permill,
     Perquintill,
     PerU16,
+    #[cfg(feature = "ed25519")]
     PublicEd25519,
+    #[cfg(feature = "sr25519")]
     PublicSr25519,
+    #[cfg(feature = "ecdsa")]
     PublicEcdsa,
+    #[cfg(feature = "ed25519")]
     SignatureEd25519,
+    #[cfg(feature = "sr25519")]
     SignatureSr25519,
+    #[cfg(feature = "ecdsa")]
     SignatureEcdsa,
 }
 
@@ -616,14 +646,17 @@ impl SpecialtyTypeChecked {
                                     registry,
                                 ) {
                                     SignatureIndicator::None => Self::None,
+                                    #[cfg(feature = "ecdsa")]
                                     SignatureIndicator::Ecdsa => {
                                         *position += ENUM_INDEX_ENCODED_LEN;
                                         Self::SignatureEcdsa
                                     }
+                                    #[cfg(feature = "ed25519")]
                                     SignatureIndicator::Ed25519 => {
                                         *position += ENUM_INDEX_ENCODED_LEN;
                                         Self::SignatureEd25519
                                     }
+                                    #[cfg(feature = "sr25519")]
                                     SignatureIndicator::Sr25519 => {
                                         *position += ENUM_INDEX_ENCODED_LEN;
                                         Self::SignatureSr25519
@@ -692,11 +725,17 @@ impl SpecialtyTypeChecked {
             SpecialtyTypeHinted::Permill => Self::Permill,
             SpecialtyTypeHinted::Perquintill => Self::Perquintill,
             SpecialtyTypeHinted::PerU16 => Self::PerU16,
+            #[cfg(feature = "ed25519")]
             SpecialtyTypeHinted::PublicEd25519 => Self::PublicEd25519,
+            #[cfg(feature = "sr25519")]
             SpecialtyTypeHinted::PublicSr25519 => Self::PublicSr25519,
+            #[cfg(feature = "ecdsa")]
             SpecialtyTypeHinted::PublicEcdsa => Self::PublicEcdsa,
+            #[cfg(feature = "ed25519")]
             SpecialtyTypeHinted::SignatureEd25519 => Self::SignatureEd25519,
+            #[cfg(feature = "sr25519")]
             SpecialtyTypeHinted::SignatureSr25519 => Self::SignatureSr25519,
+            #[cfg(feature = "ecdsa")]
             SpecialtyTypeHinted::SignatureEcdsa => Self::SignatureEcdsa,
             SpecialtyTypeHinted::UncheckedExtrinsic => Self::None,
         }
