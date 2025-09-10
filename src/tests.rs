@@ -13,7 +13,9 @@ use primitive_types::H256;
 use scale_info::{
     form::PortableForm, interner::UntrackedSymbol, IntoPortable, Path, Registry, TypeDef,
 };
-use substrate_crypto_light::{common::AccountId32, sr25519::Signature as SignatureSr25519};
+use substrate_crypto_light::{common::AccountId32};
+#[cfg(feature = "sr25519")]
+use substrate_crypto_light::{sr25519::Signature as SignatureSr25519};
 
 use crate::additional_types::Era;
 use crate::cards::{
@@ -931,7 +933,7 @@ fn parser_error_6() {
     assert_eq!(call_error_known, call_error);
 }
 
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", feature = "sr25519"))]
 #[test]
 fn unchecked_extrinsic_1() {
     let data = hex::decode("39028400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d0158e09098782f2e40602b37d94fe3e2d051c2e4927c34bc85525297310642db08280110b4a02b89676e966d07fdf7f362cdeb858d28d681564bd0f7d33dce5c8cc50204000403008eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a480284d717").unwrap();
@@ -1232,7 +1234,7 @@ fn unchecked_extrinsic_1() {
     }
 }
 
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", feature = "sr25519"))]
 #[test]
 fn unchecked_extrinsic_2() {
     let data = hex::decode("3502840094af1b41d3346c8b50f9f2d229422ddbbc53e7a59df3b49abd049ff059122d6e01c240497d62b63d2e6144bd59d43f385f5d377d03c21d0643513054491cf90c67f71c5f32ae4ac37d16f55eb100dae006b774f57283d21bb7afb84c8bbfb5de873500280000000a040036988c476fff14e9885c49f938193f2fc4b54ba9e4cf673ffed3dc4e413aeb3a00").unwrap();

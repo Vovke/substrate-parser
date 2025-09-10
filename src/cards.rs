@@ -5,12 +5,13 @@ use num_bigint::{BigInt, BigUint};
 use primitive_types::{H160, H256, H512};
 use scale_info::{form::PortableForm, Field, Path, Type, Variant};
 use sp_arithmetic::{PerU16, Perbill, Percent, Permill, Perquintill};
-use substrate_crypto_light::{
-    common::{AccountId32, AsBase58},
-    ecdsa::{Public as PublicEcdsa, Signature as SignatureEcdsa},
-    ed25519::{Public as PublicEd25519, Signature as SignatureEd25519},
-    sr25519::{Public as PublicSr25519, Signature as SignatureSr25519},
-};
+use substrate_crypto_light::common::{AccountId32, AsBase58};
+#[cfg(feature = "ecdsa")]
+use substrate_crypto_light::ecdsa::{Public as PublicEcdsa, Signature as SignatureEcdsa};
+#[cfg(feature = "ed25519")]
+use substrate_crypto_light::ed25519::{Public as PublicEd25519, Signature as SignatureEd25519};
+#[cfg(feature = "sr25519")]
+use substrate_crypto_light::sr25519::{Public as PublicSr25519, Signature as SignatureSr25519};
 
 use crate::additional_types::Era;
 
@@ -337,13 +338,19 @@ pub enum ParsedData {
         specialty: SpecialtyUnsignedInteger,
     },
     PrimitiveU256(BigUint),
+    #[cfg(feature = "ed25519")]
     PublicEd25519(PublicEd25519),
+    #[cfg(feature = "sr25519")]
     PublicSr25519(PublicSr25519),
+    #[cfg(feature = "ecdsa")]
     PublicEcdsa(PublicEcdsa),
     Sequence(SequenceData),
     SequenceRaw(SequenceRawData),
+    #[cfg(feature = "ed25519")]
     SignatureEd25519(SignatureEd25519),
+    #[cfg(feature = "sr25519")]
     SignatureSr25519(SignatureSr25519),
+    #[cfg(feature = "ecdsa")]
     SignatureEcdsa(SignatureEcdsa),
     Text {
         text: String,
@@ -605,6 +612,7 @@ impl ParsedData {
             ParsedData::PrimitiveU256(value) => {
                 single_card!(PrimitiveU256, value, indent, info_flat)
             }
+            #[cfg(feature = "ed25519")]
             ParsedData::PublicEd25519(value) => {
                 vec![ExtendedCard {
                     parser_card: ParserCard::PublicEd25519(IdData::from_public_ed25519(
@@ -615,6 +623,7 @@ impl ParsedData {
                     info_flat,
                 }]
             }
+            #[cfg(feature = "sr25519")]
             ParsedData::PublicSr25519(value) => {
                 vec![ExtendedCard {
                     parser_card: ParserCard::PublicSr25519(IdData::from_public_sr25519(
@@ -625,6 +634,7 @@ impl ParsedData {
                     info_flat,
                 }]
             }
+            #[cfg(feature = "ecdsa")]
             ParsedData::PublicEcdsa(value) => {
                 vec![ExtendedCard {
                     parser_card: ParserCard::PublicEcdsa(IdData::from_public_ecdsa(
@@ -716,12 +726,15 @@ impl ParsedData {
                 }
                 out
             }
+            #[cfg(feature = "ed25519")]
             ParsedData::SignatureEd25519(value) => {
                 single_card!(SignatureEd25519, value, indent, info_flat)
             }
+            #[cfg(feature = "sr25519")]
             ParsedData::SignatureSr25519(value) => {
                 single_card!(SignatureSr25519, value, indent, info_flat)
             }
+            #[cfg(feature = "ecdsa")]
             ParsedData::SignatureEcdsa(value) => {
                 single_card!(SignatureEcdsa, value, indent, info_flat)
             }
@@ -932,8 +945,11 @@ macro_rules! make_id_data {
 }
 
 make_id_data!(from_account_id32, AccountId32);
+#[cfg(feature = "ed25519")]
 make_id_data!(from_public_ed25519, PublicEd25519);
+#[cfg(feature = "sr25519")]
 make_id_data!(from_public_sr25519, PublicSr25519);
+#[cfg(feature = "ecdsa")]
 make_id_data!(from_public_ecdsa, PublicEcdsa);
 
 /// Flat cards content.
@@ -1007,8 +1023,11 @@ pub enum ParserCard {
         text: Option<String>,
         element_info_flat: Vec<InfoFlat>,
     },
+    #[cfg(feature = "ed25519")]
     SignatureEd25519(SignatureEd25519),
+    #[cfg(feature = "sr25519")]
     SignatureSr25519(SignatureSr25519),
+    #[cfg(feature = "ecdsa")]
     SignatureEcdsa(SignatureEcdsa),
     SpecName(String),
     Text(String),
@@ -1170,12 +1189,15 @@ impl ExtendedCard {
                 Some(valid_text) => readable(self.indent, "Text", valid_text),
                 None => readable(self.indent, "Sequence u8", hex),
             },
+            #[cfg(feature = "ed25519")]
             ParserCard::SignatureEd25519(a) => {
                 readable(self.indent, "Signature Ed25519", &hex::encode(a.0))
             }
+            #[cfg(feature = "sr25519")]
             ParserCard::SignatureSr25519(a) => {
                 readable(self.indent, "Signature Sr25519", &hex::encode(a.0))
             }
+            #[cfg(feature = "ecdsa")]
             ParserCard::SignatureEcdsa(a) => {
                 readable(self.indent, "Signature Ecdsa", &hex::encode(a.0))
             }
