@@ -446,7 +446,7 @@ impl<E: ExternalMemory> AsMetadata<E> for RuntimeMetadataV16 {
                 .filter_map(|idx| self
                     .extrinsic
                     .transaction_extensions
-                    .get((*idx as usize))
+                    .get((*idx).0 as usize)
                     .cloned())
                 .map(SignedExtensionMetadata::from)
                 .collect())
@@ -497,9 +497,9 @@ fn spec_name_version_from_runtime_version_data(
                     None
                 }
             }
-            ParsedData::Composite(fields) => {
-                if fields.len() == 1 {
-                    extract_text(&fields[0].data.data)
+            ParsedData::Composite(_fields) => {
+                if _fields.len() == 1 {
+                    extract_text(&_fields[0].data.data)
                 } else {
                     None
                 }
