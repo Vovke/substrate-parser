@@ -5,21 +5,18 @@ use parity_scale_codec::{DecodeAll, HasCompact};
 use primitive_types::{H160, H256, H512};
 use sp_arithmetic::{PerU16, Perbill, Percent, Permill, Perquintill};
 use substrate_crypto_light::common::AccountId32;
-#[cfg(feature = "ecdsa")]
 use substrate_crypto_light::ecdsa::{
     Public as PublicEcdsa,
     PUBLIC_LEN as PUBLIC_LEN_ECDSA,
     Signature as SignatureEcdsa,
     SIGNATURE_LEN as SIGNATURE_LEN_ECDSA
 };
-#[cfg(feature = "ed25519")]
 use substrate_crypto_light::ed25519::{
     Public as PublicEd25519,
     PUBLIC_LEN as PUBLIC_LEN_ED25519,
     Signature as SignatureEd25519,
     SIGNATURE_LEN as SIGNATURE_LEN_ED25519
 };
-#[cfg(feature = "sr25519")]
 use substrate_crypto_light::sr25519::{
     Public as PublicSr25519,
     PUBLIC_LEN as PUBLIC_LEN_SR25519,
@@ -203,17 +200,11 @@ impl_stable_length_array!(H160, Self::len_bytes());
 impl_stable_length_array!(H256, Self::len_bytes());
 impl_stable_length_array!(H512, Self::len_bytes());
 impl_stable_length_array!(AccountId32, substrate_crypto_light::common::HASH_256_LEN);
-#[cfg(feature = "ecdsa")]
 impl_stable_length_array!(PublicEcdsa, PUBLIC_LEN_ECDSA);
-#[cfg(feature = "ed25519")]
 impl_stable_length_array!(PublicEd25519, PUBLIC_LEN_ED25519);
-#[cfg(feature = "sr25519")]
 impl_stable_length_array!(PublicSr25519, PUBLIC_LEN_SR25519);
-#[cfg(feature = "ecdsa")]
 impl_stable_length_array!(SignatureEcdsa, SIGNATURE_LEN_ECDSA);
-#[cfg(feature = "ed25519")]
 impl_stable_length_array!(SignatureEd25519, SIGNATURE_LEN_ED25519);
-#[cfg(feature = "sr25519")]
 impl_stable_length_array!(SignatureSr25519, SIGNATURE_LEN_SR25519);
 
 /// Unsigned integer trait. Compatible with compacts, uses the propagated
@@ -327,17 +318,11 @@ impl_block_compact!(i128, PrimitiveI128);
 impl_block_compact!(BigInt, PrimitiveI256);
 impl_block_compact!(BigUint, PrimitiveU256);
 impl_block_compact!(AccountId32, Id);
-#[cfg(feature = "ed25519")]
 impl_block_compact!(PublicEd25519, PublicEd25519);
-#[cfg(feature = "sr25519")]
 impl_block_compact!(PublicSr25519, PublicSr25519);
-#[cfg(feature = "ecdsa")]
 impl_block_compact!(PublicEcdsa, PublicEcdsa);
-#[cfg(feature = "ed25519")]
 impl_block_compact!(SignatureEd25519, SignatureEd25519);
-#[cfg(feature = "sr25519")]
 impl_block_compact!(SignatureSr25519, SignatureSr25519);
-#[cfg(feature = "ecdsa")]
 impl_block_compact!(SignatureEcdsa, SignatureEcdsa);
 impl_block_compact!(H160, H160);
 impl_block_compact!(H512, H512);

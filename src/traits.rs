@@ -26,6 +26,10 @@ use frame_metadata::{
         PalletMetadata as PalletMetadataV15, RuntimeMetadataV15,
         SignedExtensionMetadata as SignedExtensionMetadataV15,
     },
+    v16::{
+        PalletMetadata as PalletMetadataV16, RuntimeMetadataV16,
+        TransactionExtensionMetadata as TransactionExtensionMetadataV16,
+    },
 };
 use parity_scale_codec::{Decode, Encode};
 use scale_info::{
@@ -99,6 +103,17 @@ impl_signed_extension_metadata_from!(
     SignedExtensionMetadataV14<PortableForm>,
     SignedExtensionMetadataV15<PortableForm>
 );
+
+impl From<TransactionExtensionMetadataV16<PortableForm>> for SignedExtensionMetadata {
+    fn from(ext: TransactionExtensionMetadataV16<PortableForm>) -> Self {
+        Self {
+            identifier: ext.identifier,
+            ty: ext.ty,
+            // In V16, `implicit` replaces `additional_signed` semantics.
+            additional_signed: ext.implicit,
+        }
+    }
+}
 
 /// Metadata `spec_name` and `spec_version`.
 ///
@@ -381,11 +396,148 @@ version_constant_data_and_ty!(
     PalletMetadataV15<PortableForm>,
     version_constant_data_and_ty_v15
 );
+version_constant_data_and_ty!(
+    /// Find `Version` constant and its type in `System` pallet for `V16` metadata.
+    PalletMetadataV16<PortableForm>,
+    version_constant_data_and_ty_v16
+);
+
+impl<E: ExternalMemory> AsMetadata<E> for RuntimeMetadataV16 {
+    type TypeRegistry = PortableRegistry;
+
+    type MetaStructureError = MetaVersionErrorPallets;
+
+    fn types(&self) -> Self::TypeRegistry {
+        self.types.to_owned()
+    }
+
+    fn spec_name_version(&self) -> Result<SpecNameVersion, Self::MetaStructureError> {
+        let (value, ty) = version_constant_data_and_ty_v16(&self.pallets)?;
+        match decode_all_as_type::<&[u8], (), RuntimeMetadataV16>(
+            &ty,
+            &value.as_ref(),
+            &mut (),
+            &self.types,
+        ) {
+            Ok(extended_data) => Ok(spec_name_version_from_runtime_version_data(
+                extended_data.data,
+            )?),
+            Err(_) => Err(MetaVersionErrorPallets::RuntimeVersionNotDecodeable),
+        }
+    }
+
+    fn call_ty(&self) -> Result<UntrackedSymbol<TypeId>, Self::MetaStructureError> {
+        // In V16, call type is exposed via outer enums
+        Ok(self.outer_enums.call_enum_ty)
+    }
+
+    fn signed_extensions(&self) -> Result<Vec<SignedExtensionMetadata>, Self::MetaStructureError> {
+        // In V16, extensions are versioned. For format v4 extrinsics, use version 0
+        // mapping (matches common chain usage). If missing, fall back to full list order.
+        if let Some(indexes) = self
+            .extrinsic
+            .transaction_extensions_by_version
+            .get(&0)
+        {
+            Ok(indexes
+                .iter()
+                .filter_map(|idx| self
+                    .extrinsic
+                    .transaction_extensions
+                    .get((*idx as usize))
+                    .cloned())
+                .map(SignedExtensionMetadata::from)
+                .collect())
+        } else {
+            Ok(self
+                .extrinsic
+                .transaction_extensions
+                .iter()
+                .cloned()
+                .map(SignedExtensionMetadata::from)
+                .collect())
+        }
+    }
+}
+
+impl<E: ExternalMemory> AsCompleteMetadata<E> for RuntimeMetadataV16 {
+    fn extrinsic_type_params(&self) -> Result<ExtrinsicTypeParams, Self::MetaStructureError> {
+        Ok(ExtrinsicTypeParams {
+            address_ty: self.extrinsic.address_ty,
+            // In V16, call type is exposed via outer enums
+            call_ty: self.outer_enums.call_enum_ty,
+            signature_ty: self.extrinsic.signature_ty,
+            // V16 does not provide a single `extra` type; decoding will be handled
+            // as a sequence of extension types downstream for unchecked extrinsics.
+            // Keep a placeholder; it won't be used directly in V16 path.
+            extra_ty: self.outer_enums.call_enum_ty,
+        })
+    }
+
+    fn extrinsic_version(&self) -> Result<u8, Self::MetaStructureError> {
+        // Choose the highest supported version for validation (commonly 4).
+        Ok(*self.extrinsic.versions.iter().max().unwrap_or(&0))
+    }
+}
 
 /// Extract [`SpecNameVersion`] from parsed data.
 fn spec_name_version_from_runtime_version_data(
     parsed_data: ParsedData,
 ) -> Result<SpecNameVersion, MetaVersionErrorPallets> {
+    // Helpers to tolerate wrapping around expected values (Composite/Variant/RuntimeString).
+    fn extract_text(data: &ParsedData) -> Option<String> {
+        match data {
+            ParsedData::Text { text, .. } => Some(text.to_owned()),
+            ParsedData::Sequence(seq) => {
+                if let crate::cards::Sequence::U8(bytes) = &seq.data {
+                    String::from_utf8(bytes.clone()).ok()
+                } else {
+                    None
+                }
+            }
+            ParsedData::Composite(fields) => {
+                if fields.len() == 1 {
+                    extract_text(&fields[0].data.data)
+                } else {
+                    None
+                }
+            }
+            ParsedData::Variant(variant) => {
+                if variant.fields.len() == 1 {
+                    extract_text(&variant.fields[0].data.data)
+                } else {
+                    None
+                }
+            }
+            _ => None
+        }
+    }
+
+    fn extract_u128(data: &ParsedData) -> Option<u128> {
+        match data {
+            ParsedData::PrimitiveU8 { value, .. } => Some((*value).into()),
+            ParsedData::PrimitiveU16 { value, .. } => Some((*value).into()),
+            ParsedData::PrimitiveU32 { value, .. } => Some((*value).into()),
+            ParsedData::PrimitiveU64 { value, .. } => Some((*value).into()),
+            ParsedData::PrimitiveU128 { value, .. } => Some(*value),
+            ParsedData::Composite(fields) => {
+                if fields.len() == 1 {
+                    extract_u128(&fields[0].data.data)
+                } else {
+                    None
+                }
+            }
+            ParsedData::Variant(variant) => {
+                if variant.fields.len() == 1 {
+                    extract_u128(&variant.fields[0].data.data)
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    }
+
     let mut printed_spec_version = None;
     let mut spec_name = None;
 
@@ -450,6 +602,132 @@ fn spec_name_version_from_runtime_version_data(
                         spec_name = Some(text.to_owned())
                     } else {
                         return Err(MetaVersionErrorPallets::SpecNameIdentifierTwice);
+                    }
+                }
+                // Fallback: if specialty markers are not set, match by field name explicitly.
+                ParsedData::PrimitiveU8 { value, .. } => {
+                    if let Some(name) = &field.field_name {
+                        if name == "spec_version" {
+                            if printed_spec_version.is_none() {
+                                printed_spec_version = Some(value.to_string())
+                            } else {
+                                return Err(MetaVersionErrorPallets::SpecVersionIdentifierTwice);
+                            }
+                        }
+                    }
+                }
+                ParsedData::PrimitiveU16 { value, .. } => {
+                    if let Some(name) = &field.field_name {
+                        if name == "spec_version" {
+                            if printed_spec_version.is_none() {
+                                printed_spec_version = Some(value.to_string())
+                            } else {
+                                return Err(MetaVersionErrorPallets::SpecVersionIdentifierTwice);
+                            }
+                        }
+                    }
+                }
+                ParsedData::PrimitiveU32 { value, .. } => {
+                    if let Some(name) = &field.field_name {
+                        if name == "spec_version" {
+                            if printed_spec_version.is_none() {
+                                printed_spec_version = Some(value.to_string())
+                            } else {
+                                return Err(MetaVersionErrorPallets::SpecVersionIdentifierTwice);
+                            }
+                        }
+                    }
+                }
+                ParsedData::PrimitiveU64 { value, .. } => {
+                    if let Some(name) = &field.field_name {
+                        if name == "spec_version" {
+                            if printed_spec_version.is_none() {
+                                printed_spec_version = Some(value.to_string())
+                            } else {
+                                return Err(MetaVersionErrorPallets::SpecVersionIdentifierTwice);
+                            }
+                        }
+                    }
+                }
+                ParsedData::PrimitiveU128 { value, .. } => {
+                    if let Some(name) = &field.field_name {
+                        if name == "spec_version" {
+                            if printed_spec_version.is_none() {
+                                printed_spec_version = Some(value.to_string())
+                            } else {
+                                return Err(MetaVersionErrorPallets::SpecVersionIdentifierTwice);
+                            }
+                        }
+                    }
+                }
+                ParsedData::Text { text, .. } => {
+                    if let Some(name) = &field.field_name {
+                        if name == "spec_name" {
+                            if spec_name.is_none() {
+                                spec_name = Some(text.to_owned())
+                            } else {
+                                return Err(MetaVersionErrorPallets::SpecNameIdentifierTwice);
+                            }
+                        }
+                    }
+                }
+                ParsedData::Sequence(sequence_data) => {
+                    if let Some(name) = &field.field_name {
+                        if name == "spec_name" {
+                            // Accept Vec<u8> and try UTF-8 to produce a String
+                            if let crate::cards::Sequence::U8(bytes) = &sequence_data.data {
+                                if let Ok(s) = String::from_utf8(bytes.clone()) {
+                                    if spec_name.is_none() {
+                                        spec_name = Some(s)
+                                    } else {
+                                        return Err(MetaVersionErrorPallets::SpecNameIdentifierTwice);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                // Tolerate composite/variant wrappers for both spec_name and spec_version
+                ParsedData::Composite(fields) => {
+                    if let Some(name) = &field.field_name {
+                        if name == "spec_name" {
+                            if let Some(s) = extract_text(&field.data.data) {
+                                if spec_name.is_none() {
+                                    spec_name = Some(s)
+                                } else {
+                                    return Err(MetaVersionErrorPallets::SpecNameIdentifierTwice);
+                                }
+                            }
+                        } else if name == "spec_version" {
+                            if let Some(v) = extract_u128(&field.data.data) {
+                                if printed_spec_version.is_none() {
+                                    printed_spec_version = Some(v.to_string())
+                                } else {
+                                    return Err(MetaVersionErrorPallets::SpecVersionIdentifierTwice);
+                                }
+                            }
+                        }
+                    }
+                }
+                ParsedData::Variant(_) => {
+                    if let Some(name) = &field.field_name {
+                        if name == "spec_name" {
+                            if let Some(s) = extract_text(&field.data.data) {
+                                if spec_name.is_none() {
+                                    spec_name = Some(s)
+                                } else {
+                                    return Err(MetaVersionErrorPallets::SpecNameIdentifierTwice);
+                                }
+                            }
+                        } else if name == "spec_version" {
+                            if let Some(v) = extract_u128(&field.data.data) {
+                                if printed_spec_version.is_none() {
+                                    printed_spec_version = Some(v.to_string())
+                                } else {
+                                    return Err(MetaVersionErrorPallets::SpecVersionIdentifierTwice);
+                                }
+                            }
+                        }
                     }
                 }
                 _ => (),

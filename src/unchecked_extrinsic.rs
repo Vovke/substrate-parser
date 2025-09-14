@@ -53,7 +53,8 @@ use core::cmp::Ordering;
 
 use external_memory_tools::{AddressableBuffer, BufferError, ExternalMemory};
 
-use crate::cards::{Call, ExtendedData, ParsedData};
+use crate::cards::{Call, ExtendedData, FieldData, ParsedData};
+use crate::std::{string::String, vec::Vec};
 use crate::compacts::get_compact;
 use crate::decode_as_type_at_position;
 use crate::error::{ParserError, UncheckedExtrinsicError};
@@ -160,13 +161,32 @@ where
             &mut position,
         )?;
 
-        let extra = decode_as_type_at_position::<B, E, M>(
-            &extrinsic_type_params.extra_ty,
-            input,
-            ext_memory,
-            &registry,
-            &mut position,
-        )?;
+        // Decode the "extra" as a sequence of transaction extensions in the
+        // order defined by the metadata. This works for V14/V15 and V16.
+        let mut extra_fields: Vec<FieldData> = Vec::new();
+        for ext_meta in metadata
+            .signed_extensions()
+            .map_err(UncheckedExtrinsicError::MetaStructure)?
+            .into_iter()
+        {
+            let data = decode_as_type_at_position::<B, E, M>(
+                &ext_meta.ty,
+                input,
+                ext_memory,
+                &registry,
+                &mut position,
+            )?;
+            extra_fields.push(FieldData {
+                field_name: Some(ext_meta.identifier),
+                type_name: None,
+                field_docs: String::new(),
+                data,
+            });
+        }
+        let extra = ExtendedData {
+            data: ParsedData::Composite(extra_fields),
+            info: Vec::new(),
+        };
 
         let call_extended_data = decode_as_type_at_position::<B, E, M>(
             &extrinsic_type_params.call_ty,
