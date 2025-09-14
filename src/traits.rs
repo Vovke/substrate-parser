@@ -432,12 +432,14 @@ impl<E: ExternalMemory> AsMetadata<E> for RuntimeMetadataV16 {
     }
 
     fn signed_extensions(&self) -> Result<Vec<SignedExtensionMetadata>, Self::MetaStructureError> {
-        // In V16, extensions are versioned. For format v4 extrinsics, use version 0
-        // mapping (matches common chain usage). If missing, fall back to full list order.
+        // In V16, extensions are versioned. Pick the highest supported
+        // extrinsic format version from metadata and use its mapping.
+        // If mapping is missing, fall back to full list order.
+        let selected_version = *self.extrinsic.versions.iter().max().unwrap_or(&0);
         if let Some(indexes) = self
             .extrinsic
             .transaction_extensions_by_version
-            .get(&0)
+            .get(&selected_version)
         {
             Ok(indexes
                 .iter()

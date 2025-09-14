@@ -15,7 +15,7 @@
 //! capacity.
 //!
 //! `AsMetadata` and `AsCompleteMetadata` are implemented for `RuntimeMetadata`
-//! versions `V14` and `V15`, both of which have conveniently in-built types
+//! versions `V14`, `V15`, and `V16`, all of which have conveniently in-built types
 //! registry allowing to track types using metadata itself without any
 //! additional information.
 //!
